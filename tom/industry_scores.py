@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from textwrap import dedent
 from pathlib import Path
+from io import StringIO
 import ast
 import json
 import logging
@@ -287,17 +288,17 @@ def generate_ticker_ideas(industry, ticker_count=5) -> list[str]:
 def get_current_price(ticker) -> str:
     """Retrieve the current price of a stock. Side-effecting"""
     stock = yf.Ticker(ticker)
+    closing = 'N/A'
     try:
         data = stock.history(period='1d', interval='1m')
-        logging.info(f"data: {data}")
+        # logging.info(f"data: {data}")
 
         last_row = data.iloc[-1]
         closing = last_row['Close']
-        return closing
     except IndexError as e:
         logging.error(f"Error retrieving current price for {ticker}: {traceback.format_exc()}")
-        return "N/A"
 
+    return closing
 
 def rank_companies(industry, analyses, prices) -> str:
     """Rank companies based on analyses and prices. Side-effecting"""
@@ -348,28 +349,22 @@ def fetch_claude_response(model,
                           messages) -> requests.models.Response:
     """Fetch a response from the Claude API. Side-effecting"""
     headers = {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
     }
     data = {
-        "model": model,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "system": system_prompt,
-        "messages": messages,
+        'model': model,
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+        'system': system_prompt,
+        'messages': messages,
     }
-    url = "https://api.anthropic.com/v1/messages"
+    url = 'https://api.anthropic.com/v1/messages'
     response = requests.post(url,
                              headers=headers,
                              json=data)
     return response
-
-
-def json_to_csv(json_payload, filename) -> None:
-    """Convert JSON payload to a CSV file. Side-effecting"""
-    df = pd.read_json(json_payload)
-    df.to_csv(filename, encoding='utf-8', index=False)
 
 
 def main(industry, tickers, artifact_directory, years=1, debugging=False):
@@ -414,7 +409,7 @@ def main(industry, tickers, artifact_directory, years=1, debugging=False):
     filepath = artifact_directory / filename
     extracted_json = extract_claude_json(ranking)
 
-    df = pd.read_json(extracted_json)
+    df = pd.read_json(StringIO(extracted_json))
     df.to_csv(filepath, encoding='utf-8', index=False)
 
 
